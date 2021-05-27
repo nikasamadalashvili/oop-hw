@@ -1,3 +1,4 @@
+import java.awt.*;
 import java.util.*;
 
 /*
@@ -5,6 +6,15 @@ import java.util.*;
  * CS108 Stanford.
  */
 public class Sudoku {
+	private final int[][] sudokuGrid;
+	private ArrayList<Spot> fillableSpots;
+	private ArrayList<HashSet<Integer>> columnsState;
+	private ArrayList<HashSet<Integer>> rowsState;
+	private ArrayList<HashSet<Integer>> squaresState;
+	private long elapsedTime;
+	private int solutionQuantity;
+	private ArrayList<String> solutionList;
+
 	// Provided grid data for main/testing
 	// The instance variable strategy is up to you.
 	
@@ -141,6 +151,66 @@ public class Sudoku {
 	 */
 	public Sudoku(int[][] ints) {
 		// YOUR CODE HERE
+		elapsedTime = 0;
+		solutionQuantity = -1;
+		sudokuGrid = new int[SIZE][SIZE];
+		solutionList = new ArrayList<>();
+		initStateArrayLists();
+		System.arraycopy(ints, 0, sudokuGrid, 0, SIZE);
+		for (int i = 0; i < SIZE; i++) {
+			System.arraycopy(ints[i], 0, sudokuGrid[i], 0, SIZE);
+			var currRow = rowsState.get(i);
+			for (int j = 0; j < SIZE; j++) {
+				if (sudokuGrid[i][j] != 0) {
+					currRow.add(sudokuGrid[i][j]);
+					columnsState.get(j).add(sudokuGrid[i][j]);
+					var currentSquareIndex = convertSudokuIndexToSquareIndex(j, i);
+					squaresState.get(currentSquareIndex).add(sudokuGrid[i][j]);
+				}
+			}
+		}
+		initSpots();
+	}
+
+	private int convertSudokuIndexToSquareIndex(int x, int y) {
+		int row = y/3;
+		row *= 3;
+		int col = x/3;
+		return row + col;
+	}
+
+	private void initStateArrayLists(){
+		columnsState = new ArrayList<>(SIZE);
+		rowsState = new ArrayList<>(SIZE);
+		squaresState = new ArrayList<>(SIZE);
+		for (int i = 0; i < SIZE; i++) {
+			columnsState.add(new HashSet());
+			rowsState.add(new HashSet());
+			squaresState.add(new HashSet());
+		}
+	}
+
+	private void initSpots() {
+		fillableSpots = new ArrayList<>();
+		for (int i = 0; i < SIZE; i++) {
+			for (int j = 0; j < SIZE; j++) {
+				if (sudokuGrid[i][j] == 0) {
+					var newSpot = new Spot(j, i, sudokuGrid[i][j], getSpotAvailableQuantity(j,i));
+					fillableSpots.add(newSpot);
+				}
+			}
+		}
+	}
+
+	private int getSpotAvailableQuantity(int x, int y) {
+		int result = 0;
+		var rowSet = rowsState.get(y);
+		var columnSet =columnsState.get(x);
+		for (int i = 1; i <= SIZE; i++) {
+			if (!rowSet.contains(i) && ! columnSet.contains(i))
+				result++;
+		}
+		return result;
 	}
 	
 	
@@ -149,15 +219,129 @@ public class Sudoku {
 	 * Solves the puzzle, invoking the underlying recursive search.
 	 */
 	public int solve() {
-		return 0; // YOUR CODE HERE
+		if (solutionQuantity == -1) {
+			var start = System.currentTimeMillis();
+			Collections.sort(fillableSpots);
+			solutionQuantity = solveRecursively(0);
+			var end = System.currentTimeMillis();
+			elapsedTime = end - start;
+		}
+		return solutionQuantity; // YOUR CODE HERE
+	}
+
+	private int solveRecursively(int startIndex) {
+		if (startIndex == fillableSpots.size()) {
+			solutionList.add(toString());
+			return 1;
+		}
+		var currentSpot = fillableSpots.get(startIndex);
+		var columnElems = columnsState.get(currentSpot.getX());
+		var rowElems = rowsState.get(currentSpot.getY());
+		var squareElems = squaresState.get(convertSudokuIndexToSquareIndex(currentSpot.getX(), currentSpot.getY()));
+		var result = 0;
+		for (int i = 1; i <= SIZE; i++) {
+			if (!columnElems.contains(i) && !rowElems.contains(i) && !squareElems.contains(i) && solutionList.size() < MAX_SOLUTIONS) {
+				columnElems.add(i);
+				rowElems.add(i);
+				squareElems.add(i);
+				currentSpot.setValue(i);
+				var quantity = solveRecursively(startIndex + 1);
+				result += quantity;
+				columnElems.remove(i);
+				rowElems.remove(i);
+				squareElems.remove(i);
+				currentSpot.setValue(0);
+			}
+		}
+		return result;
 	}
 	
 	public String getSolutionText() {
-		return ""; // YOUR CODE HERE
+		return solutionList.size() > 0 ? solutionList.stream().findFirst().get() : ""; // YOUR CODE HERE
 	}
 	
 	public long getElapsed() {
-		return 0; // YOUR CODE HERE
+		return elapsedTime; // YOUR CODE HERE
 	}
 
+	@Override
+	public String toString() {
+		var stringBuilder = new StringBuilder();
+		var rowSizeWithSpacesAndDelimiter = 2 * SIZE;
+		for (int i = 0; i < SIZE; i++) {
+			for (int j = 0; j < SIZE; j++) {
+				stringBuilder.append(sudokuGrid[i][j]);
+				stringBuilder.append(' ');
+			}
+			stringBuilder.setCharAt((i * rowSizeWithSpacesAndDelimiter) + (rowSizeWithSpacesAndDelimiter - 1), '\n');
+		}
+
+		return stringBuilder.toString();
+	}
+
+	public class Spot implements Comparable {
+		private int x;
+		private int y;
+		private int value;
+		private int assignableSize;
+
+		public Spot(int x, int y, int value, int assignableSize) {
+
+			this.x = x;
+			this.y = y;
+			this.value = value;
+			this.assignableSize = assignableSize;
+		}
+
+		public int getX() {
+			return x;
+		}
+
+		public void setX(int x) {
+			this.x = x;
+		}
+
+		public int getY() {
+			return y;
+		}
+
+		public void setY(int y) {
+			this.y = y;
+		}
+
+		public int getValue() {
+			return value;
+		}
+
+		public void setValue(int value) {
+			sudokuGrid[y][x] = value;
+			this.value = value;
+		}
+
+		public int getAssignableSize() {
+			return assignableSize;
+		}
+
+		public void setAssignableSize(int assignableSize) {
+			this.assignableSize = assignableSize;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			Spot spot = (Spot) o;
+			return x == spot.x && y == spot.y;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(x, y);
+		}
+
+		@Override
+		public int compareTo(Object o) {
+			return this.value - ((Spot) o).value;
+		}
+	}
 }

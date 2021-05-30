@@ -37,18 +37,20 @@ public class SudokuFrame extends JFrame {
 		 puzzleTextArea.addKeyListener(new KeyListener() {
 			 @Override
 			 public void keyTyped(KeyEvent keyEvent) {
-			 	if (autoCheck.isSelected())
-			 		calculateSudokuSolution();
+			 	//if (autoCheck.isSelected())
+			 		//calculateSudokuSolution();
 			 }
 
 			 @Override
 			 public void keyPressed(KeyEvent keyEvent) {
-
+				 if (autoCheck.isSelected())
+					 calculateSudokuSolution();
 			 }
 
 			 @Override
 			 public void keyReleased(KeyEvent keyEvent) {
-
+				 if (autoCheck.isSelected())
+					 calculateSudokuSolution();
 			 }
 		 });
 		 pane.add(puzzleTextArea, BorderLayout.WEST);
